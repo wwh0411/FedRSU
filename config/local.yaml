@@ -1,0 +1,104 @@
+tag: '9.4_local'
+random_seed: 0
+epochs: 100
+eval_freq: 1
+batch_size: 8
+accumulation_step: 4
+num_workers: 4
+load_model: ""
+scene: 'split'
+evaluation_mode: 'local'
+
+optimizer:
+  core_method: Adam
+  lr: 0.0004
+  weight_decay: 0.01
+
+scheduler:
+  milestones: [10, 20, 30, 40, 50]
+  gamma: 0.5
+
+fed_params:
+  num_rounds: 100
+  num_local_epochs: 1
+  sample_fraction: 1.0
+  fedprox:
+    mu: 0.01
+  scaffold:
+    lr: 0.1
+  fedavgm:
+    beta: 0.9
+  ditto:
+    mu: 0.01
+
+model_params:
+  model_name: 'flowstep3d'
+  npoint: 4096
+  use_instance_norm: False
+  loc_flow_nn: 8
+  loc_flow_rad: 1.5
+  k_decay_fact: 1
+  train_iters: 4
+  val_iters: 4
+
+data:
+  overfit_samples: null
+  train_dataset: [dair_v2x]
+  val_dataset: [dair_v2x, ips300, campus]
+#  train_dataset_path: [/GPFS/data/zuhongliu/dairv2x_new]
+  train_dataset_path: [/GPFS/data/wenhaowang/bev5/FedBEV]
+  val_dataset_path: [/GPFS/data/zuhongliu/dairv2x_new, /GPFS/data/zuhongliu/ips_flow_final_clip, /GPFS/data/zuhongliu/fedbev_flow]
+  test_dataset: null
+  test_data_root: null
+  num_points: 4096
+  full: False
+  scene: all
+  allow_less_points: False
+
+  data_process:
+    DEPTH_THRESHOLD: 35.
+    NO_CORR: True
+    IND_DIR: null
+
+  data_augmentation:
+    aug_together:
+      degree_range: 0.
+      # degree_range: 0.3490658504
+      shift_range: 0.
+      scale_low: 1.
+      scale_high: 1.
+      jitter_sigma: 0.01
+      jitter_clip: 0.00
+    aug_pc2:
+      degree_range: 0.
+      xy_shift_range: 0.
+      deg_max: False
+      # shift_range: 0.2
+      shift_range: 0.0
+      jitter_sigma: 0.01
+      jitter_clip: 0.00
+    val_aug_pc2: True
+
+loss:
+  loss_type: 'unsup_optical'
+  iters_w: [0.5, 0.3, 0.3, 0.3]
+  # iters_w: [0.5, 0.3, 0.3, 0.3]
+  w_data: [0.75, 0.75, 0.75, 0.75]
+  w_smoothness: [0.25, 0.25, 0.25, 0.25]
+  w_consistency: 0
+  smoothness_loss_params:
+    w_knn: 3.
+    w_ball_q: 1.
+    knn_loss_params:
+      # k: 16
+      k: 48
+      radius: 0.5
+      loss_norm: 1
+    ball_q_loss_params:
+      k: 64
+      radius: 1.5
+      loss_norm: 1
+  chamfer_loss_params:
+    loss_norm: 2
+    k: 1
+

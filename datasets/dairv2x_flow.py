@@ -39,10 +39,7 @@ class Dair_v2x(data.Dataset):
 
         if scene == 'all':
             if self.dataset_name == 'dair_v2x':
-                if self.merge:
-                    paths = ['yizhuang02', 'yizhuang09', 'yizhuang10', 'yizhuang13', 'yizhuang16']
-                else:
-                    paths = ['yizhuang02', 'yizhuang06', 'yizhuang08', 'yizhuang09', 'yizhuang10', 'yizhuang13',
+                paths = ['yizhuang02', 'yizhuang06', 'yizhuang08', 'yizhuang09', 'yizhuang10', 'yizhuang13',
                          'yizhuang16']
             elif self.dataset_name == 'dair_v2x_transform':
                 paths = ['t1', 't2', 't3', 't4', 't5', 't6', 't7']
@@ -224,7 +221,7 @@ class Dair_v2x(data.Dataset):
             flow = flow_.astype('float32')
 
             if n2 >= self.num_points:
-                if int(self.num_points * nonrigid_rate) > len(mask2_tracks_flow):
+                if int(self.num_points * nonrigid_rate) > len(mask1_tracks_flow):
                     num_points2_flow = len(mask2_tracks_flow)
                     num_points2_noflow = self.num_points - num_points2_flow
                 else:

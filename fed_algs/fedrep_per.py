@@ -23,18 +23,18 @@ def local_train_fedper(configs, args, train_dls, round, clients_this_round, loca
             per_keys.append(key)
 
 
-    # # 计算参数数目
-    # if args.alg == 'fedrep' or args.alg == 'fedper':
-    #     num_param_glob = 0
-    #     num_param_local = 0
-    #     for key in net_keys:
-    #         num_param_local += net_keys.numel()
-    #         print(num_param_local)
-    #         if key in per_keys:
-    #             num_param_glob += net_keys.numel()
-    #     percentage_param = 100 * float(num_param_glob) / num_param_local
-    #     print('# Params: {} (local), {} (global); Percentage {:.2f} ({}/{})'.format(
-    #         num_param_local, num_param_glob, percentage_param, num_param_glob, num_param_local))
+    # 计算参数数目
+    if args.alg == 'fedrep' or args.alg == 'fedper':
+        num_param_glob = 0
+        num_param_local = 0
+        for key in net_keys:
+            num_param_local += net_keys.numel()
+            print(num_param_local)
+            if key in per_keys:
+                num_param_glob += net_keys.numel()
+        percentage_param = 100 * float(num_param_glob) / num_param_local
+        print('# Params: {} (local), {} (global); Percentage {:.2f} ({}/{})'.format(
+            num_param_local, num_param_glob, percentage_param, num_param_glob, num_param_local))
 
 
     # training
@@ -188,8 +188,7 @@ def local_train_fedrep(configs, args, train_dls, round, clients_this_round, loca
         model.to('cpu')
 
 
-def global_aggregate_fedper(configs, args, dataset_size_list, round, clients_this_round, local_model_list, global_model,
-                            global_auxiliary=None, global_anxiliary2=None, local_auxiliary_list=None):
+def global_aggregate_fedper(configs, args, dataset_size_list, round, clients_this_round, local_model_list, global_model, global_auxiliary):
 
         global_para = global_model.state_dict()
         net_keys = [*global_para.keys()]

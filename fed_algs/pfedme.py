@@ -32,6 +32,12 @@ def local_train_pfedme(configs, args, train_dls, round, clients_this_round, loca
                                                    milestones=configs['scheduler']['milestones'],
                                                    gamma=configs['scheduler']['gamma'])
         loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
         criterion = build_criterion(loss_config)
         # local param
         # local_params = copy.deepcopy(list(model.parameters()))

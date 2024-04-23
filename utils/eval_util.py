@@ -143,8 +143,8 @@ def evaluate(configs, args, round, local_model_list, global_model, val_dls, devi
                 #     ten.zero_()
                 # # print(a)
                 # batch_data['output']['flows'] = a
-                loss = criterion(batch_data, configs)
-                valid_ave_loss.append(loss.item())
+                # loss = criterion(batch_data, configs)
+                # valid_ave_loss.append(loss.item())
                 epe, acc_strict, acc_relax, outlier, epe_norm = eval_flow(batch_data)
                 epe_norm_list.extend(epe_norm.tolist())
                 eval_meter.append_loss({'EPE': epe, 'AccS': acc_strict, 'AccR': acc_relax, 'Outlier': outlier})
@@ -152,10 +152,10 @@ def evaluate(configs, args, round, local_model_list, global_model, val_dls, devi
                 if args.debug:
                     # if idx != 8:
                     break
-        valid_ave_loss = statistics.mean(valid_ave_loss)
-        writer.add_scalar('Validate_Loss %d' % idx, valid_ave_loss, round)
-        if args.showhist:
-            visual_epe(epe_norm_list, os.path.join(save_dir, "{}_{}_{}".format(round, idx, 'epe.png')))
+        # valid_ave_loss = statistics.mean(valid_ave_loss)
+        # writer.add_scalar('Validate_Loss %d' % idx, valid_ave_loss, round)
+        # if args.showhist:
+        #     visual_epe(epe_norm_list, os.path.join(save_dir, "{}_{}_{}".format(round, idx, 'epe.png')))
         # Accumulate evaluation results
         eval_avg = eval_meter.get_mean_loss_dict()
         if 'EPE' not in eval_avg.keys():
@@ -186,7 +186,7 @@ def evaluate(configs, args, round, local_model_list, global_model, val_dls, devi
             csv_writer = csv.writer(csvfile)
             csv_writer.writerow([round, idx, valid_ave_loss, epe3d, accs, accr, outlier])
 
-        print('| Round %d | val on %d | EPE %.5f | Loss %.5f |' % (round, idx, epe3d, valid_ave_loss))
+        print('| Round %d | val on %d | EPE %.5f | ' % (round, idx, epe3d))
 
         model.to('cpu')
 

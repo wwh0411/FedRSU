@@ -19,8 +19,6 @@ alg2local = {
     'fedper': local_train_fedper,
     'ditto': local_train_ditto,
     'pfedme': local_train_pfedme,
-    'pfedgraph': local_train_pfedgraph,
-    'fedexp': local_train_fedavg,
     # 'perfed': local_train_perfed,
 
 }
@@ -40,9 +38,7 @@ alg2global = {
     'fedrep': global_aggregate_fedper,
     'fedper': global_aggregate_fedper,
     'ditto': global_aggregate_fedavg,
+    # 'perfed': global_aggregate_fedavg,
     'pfedme': global_aggregate_pfedme,
-    'perfed': global_aggregate_fedavg,
-    'pfedgraph': global_aggregate_pfedgraph,
-    'fedexp': global_aggregate_fedexp,
 
 }

@@ -54,10 +54,9 @@ class SimpleFlow(data.Dataset):
         else:
             paths = [scene]
         self.data_info_list = []
-        json_path = '/GPFS/data/wenhaowang/FedBEV/process_data/post_jsons'
         for path in paths:
-            # self.data_info_list.append(osp.join(self.root, path, path + '.json'))
-            self.data_info_list.append(osp.join(json_path, path + '.json'))
+            self.data_info_list.append(osp.join(self.root, path, path + '.json'))
+
         self.huafen = huafen
         self.initial_data()
 

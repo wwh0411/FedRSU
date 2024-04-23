@@ -38,18 +38,10 @@ class LUMPI(data.Dataset):
         self.huafen = huafen
 
         if scene == 'all':
-            if self.merge:
-                if self.dataset_name == 'lumpi':
-                    paths = ['client0', 'client1', 'client2', 'client3']
-                elif self.dataset_name == 'ips_train':
-                    paths = ['PC1']
-            else:
-                if self.dataset_name == 'lumpi':
-                    paths = ['client0', 'client1', 'client2', 'client3', 'client4']
-                elif self.dataset_name == 'ips_train':
-                    paths = ['PC1', 'PC2']
-                elif self.dataset_name == 'fedbev_train':
-                    paths = ['rsu1', 'rsu2', 'rsu3']
+            if self.dataset_name == 'lumpi':
+                paths = ['client0', 'client1', 'client2', 'client3', 'client4']
+            elif self.dataset_name == 'ips_train':
+                paths = ['PC1', 'PC2']
         else:
             paths = [scene]
 
@@ -70,9 +62,7 @@ class LUMPI(data.Dataset):
                 else:
                     for d in path_list2:
                         self.samples.append(osp.join(tmp_path, d))
-            else:
-                for d in os.listdir(osp.join(self.root, tmp_path)):
-                    self.samples.append(osp.join(tmp_path, d))
+
     def __len__(self):
         return len(self.samples)
     

@@ -7,7 +7,6 @@ sys.path.append('../utils')
 from utils import to_device
 sys.path.append('../losses')
 from losses import build_criterion
-from fed_algs.alg_util import *
 
 
 def local_train_fedavg(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer, device, local_auxiliary_list=None, global_auxiliary=None):
@@ -20,6 +19,8 @@ def local_train_fedavg(configs, args, train_dls, round, clients_this_round, loca
     # Conduct local model training
     for client_id in clients_this_round:
         model = local_model_list[client_id].cuda()
+        if args.ddp:
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
         train_loader = train_dls[client_id]
         # === optimizer & scheduler setup ===
         optimizer = optim.Adam(model.parameters(), lr=configs['optimizer']['lr'],
@@ -27,7 +28,14 @@ def local_train_fedavg(configs, args, train_dls, round, clients_this_round, loca
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer,
                                                     milestones=configs['scheduler']['milestones'],
                                                     gamma=configs['scheduler']['gamma'])
+
         loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
         criterion = build_criterion(loss_config)
         model.train()
         itrs = 0
@@ -41,7 +49,8 @@ def local_train_fedavg(configs, args, train_dls, round, clients_this_round, loca
                 loss = criterion(batch_data, configs)
                 # loss = criterion(pc1, pc2, flows_pred)
                 loss = loss / configs['accumulation_step']
-                writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
+                if args.local_rank == 0:
+                    writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
                 loss.backward()
 
                 if (itrs + 1) % configs['accumulation_step'] == 0:
@@ -49,13 +58,16 @@ def local_train_fedavg(configs, args, train_dls, round, clients_this_round, loca
                     model.zero_grad()
                     optimizer.zero_grad()
 
-                if i % 100 == 0:
+                if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
                 if args.debug:
                     break
             current_lr = optimizer.param_groups[0]['lr']
-            writer.add_scalar('lr', current_lr, global_step=round)
+            if args.local_rank == 0:
+                writer.add_scalar('lr', current_lr, global_step=round)
             scheduler.step()
+        if args.ddp:
+            torch.distributed.barrier()
         model.to('cpu')
 
 
@@ -79,6 +91,12 @@ def local_train_fedprox(configs, args, train_dls, round, clients_this_round, loc
                                                     milestones=configs['scheduler']['milestones'],
                                                     gamma=configs['scheduler']['gamma'])
         loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
         criterion = build_criterion(loss_config)
         model.train()
         itrs = 0
@@ -105,8 +123,10 @@ def local_train_fedprox(configs, args, train_dls, round, clients_this_round, loc
                     model.zero_grad()
                     optimizer.zero_grad()
 
-                if i % 100 == 0:
+                if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
+                if args.debug:
+                    break
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar('lr', current_lr, global_step=round)
             scheduler.step()
@@ -143,6 +163,13 @@ def local_train_scaffold(configs, args, train_dls, round, clients_this_round, lo
                                                     milestones=configs['scheduler']['milestones'],
                                                     gamma=configs['scheduler']['gamma'])
         loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
+
         criterion = build_criterion(loss_config)
         model.train()
         itrs = 0
@@ -155,6 +182,7 @@ def local_train_scaffold(configs, args, train_dls, round, clients_this_round, lo
                 batch_data['output'] = model(batch_data, configs)
                 loss = criterion(batch_data, configs)
                 # loss = criterion(pc1, pc2, flows_pred)
+
                 loss = loss / configs['accumulation_step']
                 writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
                 loss.backward()
@@ -168,7 +196,7 @@ def local_train_scaffold(configs, args, train_dls, round, clients_this_round, lo
                     model.zero_grad()
                     optimizer.zero_grad()
 
-                if i % 100 == 0:
+                if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
                     # break
             current_lr = optimizer.param_groups[0]['lr']
@@ -205,6 +233,23 @@ def local_train_scaffold(configs, args, train_dls, round, clients_this_round, lo
             auxilary_global_para[key] += total_delta[key]
     global_auxiliary.load_state_dict(auxilary_global_para)
 
+def local_train_feddyn(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer, device, local_auxiliary_list=None, global_auxiliary=None):
+    # Sync model parameters
+    global_w = global_model.state_dict()
+    for model in local_model_list:
+        model.load_state_dict(global_w)
+
+    global_model.cuda()
+
+    # Conduct local model training
+    for client_id in clients_this_round:
+        model = local_model_list[client_id].cuda()
+        train_loader = train_dls[client_id]
+        auxiliary_model = local_auxiliary_list[client_id].cuda()
+        previous_grads = auxiliary_model.state_dict()
+        server_weights = global_model.state_dict()
+        # TODO
+
 
 def local_train_ditto(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer,
                        device, local_auxiliary_list=None, global_auxiliary=None):
@@ -228,6 +273,12 @@ def local_train_ditto(configs, args, train_dls, round, clients_this_round, local
                                  weight_decay=configs['optimizer']['weight_decay'])
 
         loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
         criterion = build_criterion(loss_config)
 
         # activate model
@@ -296,7 +347,7 @@ def local_train_ditto(configs, args, train_dls, round, clients_this_round, local
                     optimizer_2.zero_grad()
                 # break
                 # print loss
-                if i % 100 == 0:
+                if i % 50 == 0:
                     print(f'>> Client {client_id} | Epoch {round} | Iter {i} | Loss {loss}')
             current_lr = optimizer_2.param_groups[0]['lr']
             writer.add_scalar('lr', current_lr, global_step=round)
@@ -319,12 +370,13 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
         else:
             clients_this_round = [args.num]
             print('train on :', args.num)
-
+    # clients_this_round = [0]
     for client_id in clients_this_round:
         if args.alg == 'central':
             model = global_model.cuda()
         elif args.alg == 'local':
             model = local_model_list[client_id].cuda()
+        # model = global_model.cuda()
         train_loader = train_dls[client_id]
         # === optimizer & scheduler setup ===
         optimizer = optim.Adam(model.parameters(), lr=configs['optimizer']['lr'],
@@ -333,6 +385,14 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
                                                    milestones=configs['scheduler']['milestones'],
                                                    gamma=configs['scheduler']['gamma'])
         loss_config = configs['loss']
+        loss_config = configs['loss']
+        if client_id < args.p:
+            print('optical')
+            loss_config['loss_type'] = 'unsup_optical'
+        else:
+            print('normal')
+            loss_config['loss_type'] = 'unsup_l1_seq'
+        criterion = build_criterion(loss_config)
         criterion = build_criterion(loss_config)
         model.train()
         itrs = 0
@@ -354,7 +414,7 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
                     model.zero_grad()
                     optimizer.zero_grad()
 
-                if i % 100 == 0:
+                if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
                 if args.debug:
                     break
@@ -368,164 +428,3 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
 def local_train_perfed(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer,
                        device, local_auxiliary_list=None, global_auxiliary=None):
     pass
-
-
-class pFedMeOptimizer(torch.optim.Optimizer):
-    def __init__(self, params, lr=0.01, lamda=0.1, mu=0.001):
-        if lr < 0.0:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        defaults = dict(lr=lr, lamda=lamda, mu=mu)
-        super(pFedMeOptimizer, self).__init__(params, defaults)
-
-    def step(self, local_model):
-        group = None
-        weight_update = local_model.copy()
-        for group in self.param_groups:
-            for p, localweight in zip(group['params'], weight_update):
-                # localweight = localweight.cuda()
-                # approximate local model
-                # print(p)
-                # print(localweight)
-                # print(p.data)
-                # print(type(p.grad.data))
-                # if p.grad.data is not None:
-                if not isinstance(p.grad, type(None)):
-
-                # print(type(p.grad))
-                # print(p.grad)
-                # if p.data:
-                    p.data = p.data - group['lr'] * (p.grad.data + group['lamda'] * (p.data - localweight.data) + group['mu'] * p.data)
-
-        return group['params']
-
-# def local_train_pfedme(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer,
-#                        device, local_auxiliary_list=None, global_auxiliary=None):
-#     # Sync model parameters
-#     global_w = global_model.state_dict()
-#     for global_model_mimic in local_auxiliary_list:
-#         global_model_mimic.load_state_dict(global_w)
-#     lamb = configs['fed_params']['pfedme']['lambda']
-#     # Conduct local model training
-#     for client_id in clients_this_round:
-#         model = local_model_list[client_id].cuda()
-#         train_loader = train_dls[client_id]
-#         global_model_mimic = local_auxiliary_list[client_id].cuda()
-#
-#         # === optimizer & scheduler setup ===
-#         optimizer = optim.Adam(model.parameters(), lr=configs['optimizer']['lr'],
-#                                weight_decay=configs['optimizer']['weight_decay'])
-#         optimizer = pFedMeOptimizer(model.parameters(), lr=configs['optimizer']['lr'], lamda=lamb)
-#         scheduler = optim.lr_scheduler.MultiStepLR(optimizer,
-#                                                    milestones=configs['scheduler']['milestones'],
-#                                                    gamma=configs['scheduler']['gamma'])
-#         loss_config = configs['loss']
-#         criterion = build_criterion(loss_config)
-#         # local param
-#         local_params = copy.deepcopy(list(model.parameters()))
-#         # local_params = copy.deepcopy(model.parameters())
-#
-#
-#
-#         model.train()
-#         itrs = 0
-#         for epoch in range(configs['fed_params']['num_local_epochs']):
-#             for i, batch_data in tqdm(enumerate(train_loader)):
-#                 global_mimic_collector = list(global_model_mimic.parameters())
-#
-#                 itrs += 1
-#                 batch_data = to_device(batch_data, device)
-#                 # print(batch_data)
-#                 batch_data['output'] = model(batch_data, configs)
-#                 # print(batch_data['output'])
-#                 loss = criterion(batch_data, configs)
-#                 # loss = criterion(pc1, pc2, flows_pred)
-#                 loss = loss / configs['accumulation_step']
-#                 writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
-#                 loss.backward()
-#
-#                 if (itrs + 1) % configs['accumulation_step'] == 0:
-#                     # optimizer.step()
-#                     personalized_params = optimizer.step(local_params)
-#                     for new_param, localweight in zip(personalized_params, local_params):
-#                         localweight.data = localweight.data - 1e-2 * lamb * (localweight.data - new_param.data)
-#                     model.zero_grad()
-#                     optimizer.zero_grad()
-#                 scheduler.step()
-#
-#                 if i % 100 == 0:
-#                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
-#                 if args.debug:
-#                     break
-#             current_lr = optimizer.param_groups[0]['lr']
-#             writer.add_scalar('lr', current_lr, global_step=round)
-#         for param, new_param in zip(model.parameters(), local_params):
-#             param.data = new_param.data
-#
-#         model.to('cpu')
-
-
-def local_train_pfedgraph(configs, args, train_dls, round, clients_this_round, local_model_list, global_model, writer, device, local_auxiliary_list=None, global_auxiliary=None):
-
-    # Sync model parameters
-    global_w = global_model.state_dict()
-    for model in local_model_list:
-        model.load_state_dict(global_w)
-
-    # Conduct local model training
-    for client_id in clients_this_round:
-        model = local_model_list[client_id].cuda()
-        train_loader = train_dls[client_id]
-        # === optimizer & scheduler setup ===
-        optimizer = optim.Adam(model.parameters(), lr=configs['optimizer']['lr'],
-                                weight_decay=configs['optimizer']['weight_decay'])
-        scheduler = optim.lr_scheduler.MultiStepLR(optimizer,
-                                                    milestones=configs['scheduler']['milestones'],
-                                                    gamma=configs['scheduler']['gamma'])
-        loss_config = configs['loss']
-        lam = 0.1
-        criterion = build_criterion(loss_config)
-
-        cluster_model = local_auxiliary_list[client_id]
-        cluster_model.cuda()
-        flatten_cluster_model = []
-        for param in cluster_model.parameters():
-            flatten_cluster_model.append(param.reshape(-1))
-        flatten_cluster_model = torch.cat(flatten_cluster_model)
-
-        model.train()
-        itrs = 0
-        for epoch in range(configs['fed_params']['num_local_epochs']):
-            for i, batch_data in tqdm(enumerate(train_loader)):
-                itrs += 1
-                batch_data = to_device(batch_data, device)
-                # print(batch_data)
-                batch_data['output'] = model(batch_data, configs)
-                # print(batch_data['output'])
-                loss = criterion(batch_data, configs)
-                # loss = criterion(pc1, pc2, flows_pred)
-                loss = loss / configs['accumulation_step']
-                writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
-                loss.backward()
-
-                if (itrs + 1) % configs['accumulation_step'] == 0:
-                    if round > 0:
-                        flatten_model = []
-                        for param in model.parameters():
-                            flatten_model.append(param.reshape(-1))
-                        flatten_model = torch.cat(flatten_model)
-                        loss2 = lam * torch.nn.functional.cosine_similarity(flatten_cluster_model.unsqueeze(0),
-                                                                                 flatten_model.unsqueeze(0))
-                        loss2.backward()
-                    optimizer.step()
-                    model.zero_grad()
-                    optimizer.zero_grad()
-
-                if i % 100 == 0:
-                    print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
-                if args.debug:
-                    break
-            current_lr = optimizer.param_groups[0]['lr']
-            writer.add_scalar('lr', current_lr, global_step=round)
-            scheduler.step()
-        model.to('cpu')
-        cluster_model.to('cpu')

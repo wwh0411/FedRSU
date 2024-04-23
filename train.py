@@ -13,39 +13,45 @@ from utils import init_log, fix_seed, evaluate, evaluate_local
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='./config/zhan.yaml', type=str, help='Config files')
-    parser.add_argument('--gpu', type=str, default='3', help='gpu')
-    parser.add_argument('--alg', type=str, default='fedavg')
+    parser.add_argument('--config', default='./config/lumpi_flowstep3d_gen_seen.yaml', type=str, help='Config files')
+    parser.add_argument('--gpu', type=str, default='7', help='gpu')
+    parser.add_argument('--alg', type=str, default='central')
     parser.add_argument('--debug', action='store_true', default=False)
+    parser.add_argument('--ddp', action='store_true', default=False)
+    parser.add_argument("--local_rank", type=int, default=0)
+    parser.add_argument("--a", type=float, default=0.0)
+    parser.add_argument("--b", type=float, default=0.0)
+    parser.add_argument("--p", type=int, default=7)
     parser.add_argument('--num', type=int, default=-1)
-    parser.add_argument('--downsize', action='store_true', default=False)
-    parser.add_argument('--showhist', action='store_true', default=False)
-    # device
+
     args = parser.parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # device
+    if args.ddp:
+        torch.cuda.set_device(args.local_rank)
+        torch.distributed.init_process_group(backend='nccl')
+        device = torch.device('cuda', args.local_rank)
+        world_size = torch.distributed.get_world_size()
+        args.world_size = world_size
+    else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # === Load config ===
     with open(args.config) as f:
         configs = yaml.load(f, Loader=yaml.FullLoader)
 
     # === Init log ===
-    save_dir, writer, csv_path = init_log(configs, args)
+    if args.local_rank == 0:
+        save_dir, writer, csv_path = init_log(configs, args)
+    else:
+        save_dir, writer, csv_path = None, None, None
 
     # === Fix the random seed ===
     fix_seed(configs['random_seed'])
 
     # === Federated dataset setup ===
     train_dls, val_dls, dataset_size_list = get_dataloaders(configs, args)
-
-    if args.downsize:
-        configs['scene'] == 'split'
-    #     for i in range(7, 17):
-    #         train_loader = train_dls[i]
-    #         l = len(train_loader)
-    #         print(l)
-    #         l = int(l/2)
-    #         train_dls[i] = train_dls[i][:l]
     num_train_client, num_val_client = len(train_dls), len(val_dls)
     print('num_train_client: %d, num_val_client: %d' % (num_train_client, num_val_client))
     print([len(x) for x in train_dls])
@@ -82,21 +88,22 @@ def main():
         local_train(configs, args, train_dls, round, clients_this_round, \
                     local_model_list, global_model, writer, device, \
                     local_auxiliary_list, global_auxiliary)
-
         # global aggregate
         global_aggregate(configs, args, dataset_size_list, round, clients_this_round, \
                             local_model_list, global_model, global_auxiliary, global_auxiliary2, local_auxiliary_list)
-
-        # print(list(global_model.parameters())[20][0].tolist())
+        # evaluate
+        print('eval^')
         # evaluate
         if round % configs['eval_freq'] == 0:
             if configs['evaluation_mode'] == 'ft':
-                epe_best, accr_best, accs_best, out_best = evaluate_local(configs, args, round, local_model_list, global_model, val_dls, \
-                               device, writer, csv_path, save_dir, epe_best, accr_best, accs_best, out_best)
+                epe_best, accr_best, accs_best, out_best = evaluate_local(configs, args, round, local_model_list,
+                                                                          global_model, val_dls, \
+                                                                          device, writer, csv_path, save_dir, epe_best,
+                                                                          accr_best, accs_best, out_best)
             else:
                 epe_best, accr_best, accs_best, out_best, epe_best_wei, accr_best_wei, accs_best_wei, out_best_wei, epe_best_7 \
                     = evaluate(configs, args, round, local_model_list, global_model, val_dls,
-                     device, writer, csv_path, save_dir, epe_best, accr_best, accs_best, out_best,
+                               device, writer, csv_path, save_dir, epe_best, accr_best, accs_best, out_best,
                                epe_best_wei, accr_best_wei, accs_best_wei, out_best_wei, epe_best_7)
 
 
