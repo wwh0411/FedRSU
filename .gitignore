@@ -125,3 +125,5 @@ open3d/
 
 data_process_code/
 capture_code/
+
+config/
