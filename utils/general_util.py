@@ -20,7 +20,7 @@ def init_log(configs, args):
 
     save_dir = os.path.join(log_path, args.alg + '_'
                             + str(configs['fed_params']['sample_fraction'])
-                            + configs['evaluation_mode'] +'_'+ str(args.num)
+                            + configs['evaluation_mode'] + '_p' + str(args.p)
                             + '_' + time.strftime('%d%B%Yat%H_%M_%S%Z'))
 
     writer = SummaryWriter(save_dir)
@@ -35,16 +35,6 @@ def init_log(configs, args):
 
     return save_dir, writer, csv_path
 
-
-# def fix_seed(seed):
-#     '''
-#     Fix the random seed
-#     '''
-#     random.seed(seed)
-#     np.random.seed(seed)
-#     torch.manual_seed(seed)
-#     torch.cuda.manual_seed(seed)
-#     torch.cuda.manual_seed_all(seed)
 
 def fix_seed(seed):
     random.seed(seed)

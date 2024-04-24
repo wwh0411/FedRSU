@@ -14,6 +14,7 @@ alg2local = {
     'scaffold': local_train_scaffold,
     'fedoptim': local_train_fedavg,
     # 'feddyn': local_train_feddyn,
+    
     # per
     'fedrep': local_train_fedrep,
     'fedper': local_train_fedper,

@@ -20,7 +20,7 @@ class SceneFlow(data.Dataset):
                  merge=False
                  ):
         """
-        dataset for dairv2x, lumpi, ips300, (ours)
+        dataset for dairv2x, lumpi, ips300, campus
         merge(deprecated): merge train & val
         huafen(deprecated): split the dataset to two datasets
         """
@@ -63,25 +63,17 @@ class SceneFlow(data.Dataset):
         path = self.samples[index]
 
         if self.split == 'train':
-            # print('####')
             pc1_loaded, pc2_loaded = self.pc_loader_train(path)
             pc1_transformed, pc2_transformed = pc1_loaded, pc2_loaded
         elif self.split == 'train_cam':
-            # print('%%%%%%%%%%')
             pc1_loaded, pc2_loaded, cam_mask, cam_coords, optical_flow, cam_extrin, cam_intrin = self.pc_loader_cam(path)
             pc1_transformed, pc2_transformed = pc1_loaded, pc2_loaded
         elif self.split == 'val' or self.split == 'test':
-            # print('&&&&')
             mask1_flow, mask2_flow, pc1_loaded, pc2_loaded, flow = self.pc_loader_gt(path)
             pc1_transformed, pc2_transformed, sf_transformed = pc1_loaded, pc2_loaded, flow
         elif self.split == 'val_cam' or self.split == 'test_cam':
             pc1_loaded, pc2_loaded, cam_mask, cam_coords, optical_flow, cam_extrin, cam_intrin, flow = self.pc_loader_cam_gt(path)
             pc1_transformed, pc2_transformed, sf_transformed = pc1_loaded, pc2_loaded, flow
-
-        # if False:  # self.split == 'train':
-        #     pc1_transformed, pc2_transformed, sf_transformed = self.transform([pc1_loaded, pc2_loaded, flow])
-        # else:
-        #     pc1_transformed, pc2_transformed, sf_transformed = pc1_loaded, pc2_loaded, flow
 
         
         pc1_norm = pc1_transformed

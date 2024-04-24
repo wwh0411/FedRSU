@@ -1,9 +1,3 @@
-"""
-PointPWC-Net model and losses
-Author: Wenxuan Wu
-Date: May 2020
-"""
-
 import torch.nn as nn
 import torch
 import numpy as np
@@ -13,6 +7,7 @@ from models.pointconv_util import SceneFlowEstimatorPointConv
 from models.pointconv_util import index_points_gather as index_points, index_points_group, Conv1d, square_distance
 
 scale = 1.0
+
 
 class PointPWCNet(nn.Module):
     def __init__(self):
@@ -188,10 +183,6 @@ class PointPWCNet(nn.Module):
         fps_pc1_idxs = [fps_pc1_l1, fps_pc1_l2, fps_pc1_l3]
         fps_pc2_idxs = [fps_pc2_l1, fps_pc2_l2, fps_pc2_l3]
 
-        # print(flow0.shape)
-        # print(flow1.shape)
-        # print(flow2.shape)
-        # print(flow3.shape)
         flows = [flow0.permute(0, 2, 1)] * 4
         output = {
             'flows': flows,
@@ -204,13 +195,13 @@ class PointPWCNet(nn.Module):
 
         return output
 
-def multiScaleLoss(pred_flows, gt_flow, fps_idxs, alpha = [0.02, 0.04, 0.08, 0.16]):
 
-    #num of scale
+def multiScaleLoss(pred_flows, gt_flow, fps_idxs, alpha = [0.02, 0.04, 0.08, 0.16]):
+    # num of scale
     num_scale = len(pred_flows)
     offset = len(fps_idxs) - num_scale + 1
 
-    #generate GT list and mask1s
+    # generate GT list and mask1s
     gt_flows = [gt_flow]
     for i in range(1, len(fps_idxs) + 1):
         fps_idx = fps_idxs[i - 1]
@@ -224,21 +215,3 @@ def multiScaleLoss(pred_flows, gt_flow, fps_idxs, alpha = [0.02, 0.04, 0.08, 0.1
 
     return total_loss
 
-
-if __name__ == "__main__":
-    pass
-    # num_points = 8192
-    # xyz1 = torch.rand(1, num_points, 3).cuda()
-    # xyz2 = torch.rand(1, num_points, 3).cuda()
-    # color1 = torch.rand(1, num_points, 3).cuda()
-    # color2 = torch.rand(1, num_points, 3).cuda()
-
-    # gt_flow = torch.rand(1, num_points, 3).cuda()
-    # mask1 = torch.ones(1, num_points, dtype = torch.bool).cuda()
-    # model = PointPWCNet().cuda()
-
-    # model.eval()
-    # for _ in range(1):
-    #     with torch.no_grad():
-    #         flows, fps_pc1_idxs, fps_pc2_idxs, pc1, pc2 = model(xyz1, xyz2, color1, color2)
-    #         torch.cuda.synchronize()

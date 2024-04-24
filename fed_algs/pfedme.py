@@ -39,9 +39,7 @@ def local_train_pfedme(configs, args, train_dls, round, clients_this_round, loca
             print('normal')
             loss_config['loss_type'] = 'unsup_l1_seq'
         criterion = build_criterion(loss_config)
-        # local param
-        # local_params = copy.deepcopy(list(model.parameters()))
-        # local_params = copy.deepcopy(model.parameters())
+
         model.train()
         itrs = 0
         for epoch in range(configs['fed_params']['num_local_epochs']):
@@ -89,11 +87,10 @@ def local_train_pfedme(configs, args, train_dls, round, clients_this_round, loca
                     break
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar('lr', current_lr, global_step=round)
-        # for param, new_param in zip(model.parameters(), local_params):
-        #     param.data = new_param.data
 
         model.to('cpu')
         global_model_mimic.to('cpu')
+
 
 def global_aggregate_pfedme(configs, args, dataset_size_list, round, clients_this_round, local_model_list, global_model,
                             global_auxiliary=None, global_auxiliary2=None, local_auxiliary_list=None):

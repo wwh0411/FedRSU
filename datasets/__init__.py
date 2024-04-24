@@ -1,51 +1,23 @@
-from datasets.dairv2x_flow import Dair_v2x
-from datasets.dairv2x_trans import Dair_v2x_trans
-from datasets.lumpi_flow import LUMPI
 from utils import data_util
-from datasets.simple_flow import SimpleFlow
 from datasets.scene_flow import SceneFlow
 import torch
 from torch.utils.data import DataLoader, ConcatDataset
 
 
-# __all__ = {
-#     'dair_v2x': Dair_v2x,
-#     'dair_v2x_transform': Dair_v2x,
-#     'lumpi': LUMPI,
-#     'ips_train': LUMPI,
-#     'ips_val': Dair_v2x,
-#     'dair_v2x_trans': Dair_v2x_trans,
-#     'fedbev': SimpleFlow,
-#     # 'raw': SimpleFlow
-# }
-
-# __all__ = {
-#     'dair_v2x': SceneFlow,
-#     'dair_v2x_transform': SceneFlow,
-#     'lumpi': SceneFlow,
-#     'dair_v2x_trans': SceneFlow,
-#     'fedbev': SceneFlow,
-#     # 'raw': SimpleFlow
-# }
-
-# dataset path
-# dair_v2x: /GPFS/data/zuhongliu/dairv2x_new  train/val/test
-# ips300: /GPFS/data/zuhongliu/ips_flow_final  train/val/test
-# lumpi: /GPFS/public/bsf/LUMPI  train
-
 __datainfo__ = {
     'dair_v2x': ['yizhuang02', 'yizhuang06', 'yizhuang08', 'yizhuang09', 'yizhuang10', 'yizhuang13', 'yizhuang16'],
-    'dair_v2x_transform': ['t1', 't2', 't3', 't4', 't5', 't6', 't7'],
     'lumpi': ['client0', 'client1', 'client2', 'client3', 'client4'],
     'ips300': ['PC1', 'PC2'],
     'campus': ['rsu1', 'rsu2', 'rsu3'],
 }
+
 
 def get_dataloaders(configs, args):
     dataset_cfg = configs['data']
     train_dls, val_dls, dataset_size_list = [], [], []
     # get train_loaders
     if args.alg == 'central':
+        # for central dataset
         for dataset_name, dataset_path in zip(dataset_cfg['train_dataset'], dataset_cfg['train_dataset_path']):
             client_scene = 'all'
             if configs['scene'] == 'split':
@@ -71,23 +43,24 @@ def get_dataloaders(configs, args):
                     shuffle=True)]
             # train_dls = [d for dl in train_dls for d in dl]
     else:
+        # for fedavg datasets
         p_count = 0
         for dataset_name, dataset_path in zip(dataset_cfg['train_dataset'], dataset_cfg['train_dataset_path']):
 
             for client_scene in __datainfo__[dataset_name]:
                 if configs['scene'] == 'split':
+                    # for optical train_cam
                     if p_count < args.p:
                         print(client_scene, p_count)
                         train_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene, split='train_cam', merge=False)
                         p_count += 1
                     else:
-                        if dataset_name == 'dair_v2x':
-                            dataset_path = '/GPFS/data/zuhongliu-1/dairv2x_new'
                         train_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path,
                                                       client_scene=client_scene, split='train', merge=False)
 
                 else:
                     train_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene, split='train', merge=False)
+
                 if args.ddp:
                     sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
                     train_dls.append(DataLoader(train_dataset,
@@ -103,15 +76,13 @@ def get_dataloaders(configs, args):
                                         shuffle=True))
 
                 dataset_size_list.append(len(train_dataset))
+
     # get val_loaders
     if configs['evaluation_mode'] in ('gen-seen', 'per', 'local'):
         for dataset_name, dataset_path in zip(dataset_cfg['val_dataset'], dataset_cfg['val_dataset_path']):
             for client_scene in __datainfo__[dataset_name]:
-                if configs['scene'] == 'split':
-                    val_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene,
-                                            split='test', merge=False)
-                else:
-                    val_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene,
+
+                val_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene,
                                                 split='test', merge=False)
                 if args.ddp:
                     sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
@@ -126,8 +97,7 @@ def get_dataloaders(configs, args):
                                             num_workers=configs['num_workers'],
                                             pin_memory=True,
                                             shuffle=False))
-    # get test_loaders
-    # TODO
+
     return train_dls, val_dls, dataset_size_list
 
 
@@ -156,6 +126,7 @@ def build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene, split, 
 
 
 # for split one client into two
+# only used for "huafen" (deprecated)
 def build_dataset_split(dataset_cfg, dataset_name, dataset_path, client_scene, split='train', merge=False):
     # data augmentation transform
     train_transform = data_util.Augmentation(dataset_cfg['data_augmentation']['aug_together'],

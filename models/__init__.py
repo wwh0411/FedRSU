@@ -17,20 +17,22 @@ def build_model(configs, args, num_train_client):
         global_model = PointPWCNet()
     elif model_config['model_name'] == 'flownet':
         global_model = FlowNet3D()
+    else:
+        raise NotImplementedError('model type not implemented')
 
     # model list
     local_model_list = [copy.deepcopy(global_model) for _ in range(num_train_client)]
     local_auxiliary_list = [copy.deepcopy(global_model) for _ in range(num_train_client)] if args.alg in ('scaffold', 'ditto', 'fedoptim', 'pfedme', 'pfedgraph') else None
-    #local_auxiliary_list2 = [copy.deepcopy(global_model) for _ in range(num_train_client)] if args.alg in ('fedoptim') else None
     global_auxiliary = copy.deepcopy(global_model) if args.alg in ('scaffold', 'ditto', 'fedavgm', 'fedoptim','pfedme', 'pfedgraph') else None
     global_auxiliary2 = copy.deepcopy(global_model) if args.alg in ('fedoptim') else None
 
+    # additional variables for some fed algs
     if args.alg == 'fedavgm':
         global_auxiliary_w = global_auxiliary.state_dict()
         for key in global_auxiliary_w.keys():
             global_auxiliary_w[key].zero_()
         global_auxiliary.load_state_dict(global_auxiliary_w)
-    if args.alg == 'fedoptim':
+    elif args.alg == 'fedoptim':
         global_aux_w = global_auxiliary.state_dict()
         global_aux_w2 = global_auxiliary2.state_dict()
         for key in global_aux_w:
@@ -38,7 +40,7 @@ def build_model(configs, args, num_train_client):
             global_aux_w2[key].zero_()
         global_auxiliary.load_state_dict(global_aux_w)
         global_auxiliary2.load_state_dict(global_aux_w2)
-    if args.alg == 'pfedgraph':
+    elif args.alg == 'pfedgraph':
         graph_matrix = torch.ones(num_train_client, num_train_client) / (num_train_client - 1)  # Collaboration Graph
         graph_matrix[range(num_train_client), range(num_train_client)] = 0
         global_auxiliary = graph_matrix

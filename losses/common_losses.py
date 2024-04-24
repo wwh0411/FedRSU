@@ -55,8 +55,6 @@ class ChamferLoss(Module):
         self.loss_norm = loss_norm
 
     def forward(self, pc_source: torch.Tensor, pc_target: torch.Tensor, pred_flow: torch.Tensor) -> torch.Tensor:
-        # print('source', pc_source.shape)
-        # print(pred_flow.shape)
         pc_target = pc_target.contiguous()
         pc_target_t = pc_target.permute(0, 2, 1).contiguous()
         pc_pred = (pc_source + pred_flow).contiguous()
@@ -79,13 +77,6 @@ class WeightedChamferLoss(Module):
         self.loss_norm = loss_norm
 
     def forward(self, pc_source, pc_target, pred_flow, weights=None) -> torch.Tensor:
-
-        # print(pc_source.shape)  # torch.Size([2, 4096, 3])
-        # print(pc_target.shape)  # torch.Size([2, 4096, 3])
-        # print(pred_flow.shape)  # torch.Size([2, 4096, 3])
-        # print(weights.shape)  # torch.Size([2, 4096])
-        # print(weights)
-
         pc_target = pc_target.contiguous()
         pc_target_t = pc_target.permute(0, 2, 1).contiguous()
         pc_pred = (pc_source + pred_flow).contiguous()
@@ -96,9 +87,9 @@ class WeightedChamferLoss(Module):
             nn1 = pointutils.grouping_operation(pc_target_t, idx.detach())
             dist1 = (pc_pred_t.unsqueeze(3) - nn1).norm(p=self.loss_norm, dim=1).mean( dim=-1)  # nn flow consistency
             dist1 *= weights
-            # print(dist1.shape)  # torch.Size([2, 4096])
+
             dist1 = dist1.mean(dim=1)
-            # print(len(weights.shape))
+        
             if len(weights.shape) < 2:
                 dist1 = dist1 / weights.mean(0)
             else:

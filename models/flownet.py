@@ -70,14 +70,3 @@ class FlowNet3D(nn.Module):
 
         return output
 
-
-if __name__ == '__main__':
-    import os
-    import torch
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-    input = torch.randn((8, 3, 2048))
-    label = torch.randn(8, 16)
-    model = FlowNet3D()
-    output = model(input, input)
-    print(output.size())

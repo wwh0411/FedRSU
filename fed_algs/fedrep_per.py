@@ -23,7 +23,7 @@ def local_train_fedper(configs, args, train_dls, round, clients_this_round, loca
             per_keys.append(key)
 
 
-    # 计算参数数目
+    # compute model layer nums
     if args.alg == 'fedrep' or args.alg == 'fedper':
         num_param_glob = 0
         num_param_local = 0
@@ -38,7 +38,6 @@ def local_train_fedper(configs, args, train_dls, round, clients_this_round, loca
 
 
     # training
-
     # Conduct local model training
     for client_id in clients_this_round:
         model = local_model_list[client_id].cuda()
@@ -65,11 +64,9 @@ def local_train_fedper(configs, args, train_dls, round, clients_this_round, loca
             for i, batch_data in tqdm(enumerate(train_loader)):
                 itrs += 1
                 batch_data = to_device(batch_data, device)
-                # print(batch_data)
                 batch_data['output'] = model(batch_data, configs)
-                # print(batch_data['output'])
                 loss = criterion(batch_data, configs)
-                # loss = criterion(pc1, pc2, flows_pred)
+
                 loss = loss / configs['accumulation_step']
                 writer.add_scalar('train_loss %d' % client_id, loss, global_step=itrs)
                 loss.backward()
@@ -81,7 +78,7 @@ def local_train_fedper(configs, args, train_dls, round, clients_this_round, loca
 
                 if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
-                    # break
+
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar('lr', current_lr, global_step=round)
             scheduler.step()
@@ -101,11 +98,7 @@ def local_train_fedrep(configs, args, train_dls, round, clients_this_round, loca
         if key.split('.')[0] == 'flow_regressor':
             per_keys.append(key)
 
-    # print(num_layers)
-    # print(net_keys)
-
     # training
-
     # Conduct local model training
     for client_id in clients_this_round:
         model = local_model_list[client_id].cuda()
@@ -165,9 +158,8 @@ def local_train_fedrep(configs, args, train_dls, round, clients_this_round, loca
             for i, batch_data in tqdm(enumerate(train_loader)):
                 itrs += 1
                 batch_data = to_device(batch_data, device)
-                # print(batch_data)
                 batch_data['output'] = model(batch_data, configs)
-                # print(batch_data['output'])
+
                 loss = criterion(batch_data, configs)
                 # loss = criterion(pc1, pc2, flows_pred)
                 loss = loss / configs['accumulation_step']
@@ -181,7 +173,7 @@ def local_train_fedrep(configs, args, train_dls, round, clients_this_round, loca
 
                 if i % 50 == 0:
                     print(f'>> Round {round} | Client {client_id} | Iter {itrs} | Loss {loss}')
-                    # break
+                   
             current_lr = optimizer.param_groups[0]['lr']
             writer.add_scalar('lr', current_lr, global_step=round)
             scheduler.step()

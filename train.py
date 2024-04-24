@@ -14,15 +14,12 @@ from utils import init_log, fix_seed, evaluate, evaluate_local
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./config/lumpi_flowstep3d_gen_seen.yaml', type=str, help='Config files')
-    parser.add_argument('--gpu', type=str, default='7', help='gpu')
-    parser.add_argument('--alg', type=str, default='central')
-    parser.add_argument('--debug', action='store_true', default=False)
+    parser.add_argument('--gpu', type=str, default='7', help='assign gpu index')
+    parser.add_argument('--alg', type=str, default='central', help="training algorithms")
+    parser.add_argument('--debug', action='store_true', default=False, help="test if code works, it will set iter_steps to 1")
     parser.add_argument('--ddp', action='store_true', default=False)
-    parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--a", type=float, default=0.0)
-    parser.add_argument("--b", type=float, default=0.0)
-    parser.add_argument("--p", type=int, default=7)
-    parser.add_argument('--num', type=int, default=-1)
+    parser.add_argument("--local_rank", type=int, default=0, help="for distributed learning")
+    parser.add_argument("--p", type=int, default=7, help="num of clients that use optical loss")
 
     args = parser.parse_args()
 
@@ -56,8 +53,7 @@ def main():
     print('num_train_client: %d, num_val_client: %d' % (num_train_client, num_val_client))
     print([len(x) for x in train_dls])
     print([len(y) for y in val_dls])
-    # for data in val_dls[7]:
-    #     print(data)
+
 
     # === Federated model setup ===
     global_model, local_model_list, local_auxiliary_list, global_auxiliary, global_auxiliary2 = build_model(configs, args, num_train_client)
@@ -73,11 +69,10 @@ def main():
     epe_best, accr_best, accs_best, out_best = 1.0, 0.0, 0.0, 1.0
     epe_best_wei, accr_best_wei, accs_best_wei, out_best_wei = 1.0, 0.0, 0.0, 1.0
     epe_best_7 = 1.0
-    best_epe_ft = [[1 for _ in range(num_val_client)] for j in range(num_train_client)]
-    best_loss_ft = [[100 for _ in range(num_val_client)] for j in range(num_train_client)]
+
     # === Training ===
     print('=====training=====:')
-    # fed
+    # fed main
     local_train = alg2local[args.alg]
     global_aggregate = alg2global[args.alg]
     for round in range(configs['fed_params']['num_rounds']):
@@ -92,7 +87,7 @@ def main():
         global_aggregate(configs, args, dataset_size_list, round, clients_this_round, \
                             local_model_list, global_model, global_auxiliary, global_auxiliary2, local_auxiliary_list)
         # evaluate
-        print('eval^')
+        print('eval:')
         # evaluate
         if round % configs['eval_freq'] == 0:
             if configs['evaluation_mode'] == 'ft':
@@ -106,9 +101,8 @@ def main():
                                device, writer, csv_path, save_dir, epe_best, accr_best, accs_best, out_best,
                                epe_best_wei, accr_best_wei, accs_best_wei, out_best_wei, epe_best_7)
 
-
-
     print('Complete %s training on %s for %d rounds %d epochs' % (args.alg, configs['data']['train_dataset_path'], configs['fed_params']['num_rounds'], configs['fed_params']['num_local_epochs']))
+
 
 if __name__ == '__main__':
     main()
