@@ -44,6 +44,8 @@ class SceneFlow(data.Dataset):
                 paths = ['PC1', 'PC2']
             elif self.dataset_name == 'campus':
                 paths = ['rsu1', 'rsu2', 'rsu3']
+            elif self.dataset_name == 'vehicle':
+                paths = ['yizhuang06', 'yizhuang09', 'yizhuang10', 'yizhuang16']
         elif scene == 'some':
             if self.dataset_name == 'dair_v2x':
                 paths = ['yizhuang02', 'yizhuang06', 'yizhuang08', 'yizhuang09', 'yizhuang10']

@@ -384,7 +384,7 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer,
                                                    milestones=configs['scheduler']['milestones'],
                                                    gamma=configs['scheduler']['gamma'])
-        loss_config = configs['loss']
+        # loss_config = configs['loss']
         loss_config = configs['loss']
         if client_id < args.p:
             print('optical')
@@ -392,7 +392,7 @@ def local_train_central(configs, args, train_dls, round, clients_this_round, loc
         else:
             print('normal')
             loss_config['loss_type'] = 'unsup_l1_seq'
-        criterion = build_criterion(loss_config)
+        # criterion = build_criterion(loss_config)
         criterion = build_criterion(loss_config)
         model.train()
         itrs = 0

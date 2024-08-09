@@ -9,6 +9,7 @@ __datainfo__ = {
     'lumpi': ['client0', 'client1', 'client2', 'client3', 'client4'],
     'ips300': ['PC1', 'PC2'],
     'campus': ['rsu1', 'rsu2', 'rsu3'],
+    'vehicle': ['yizhuang06', 'yizhuang09', 'yizhuang10', 'yizhuang16']
 }
 
 
@@ -27,6 +28,7 @@ def get_dataloaders(configs, args):
                 train_dataset = build_dataset(dataset_cfg, dataset_name, dataset_path, client_scene=client_scene, split='train', merge=False)
             train_dls.append(train_dataset)
         print(len(train_dls))
+        print([len(x) for x in train_dls])
         train_dataset = ConcatDataset(train_dls)
         if args.ddp:
             sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)

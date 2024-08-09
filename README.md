@@ -1,7 +1,8 @@
 # FedRSU: Federated Learning for Scene Flow Estimation on Roadside Units
 
-This is the official repository for our work "[FedRSU: Federated Learning for Scene Flow Estimation on Roadside Units]"(https://arxiv.org/abs/2401.12862)
+This is the official repository for our work "[FedRSU: Federated Learning for Scene Flow Estimation on Roadside Units]"(https://arxiv.org/abs/2401.12862)  
 
+FedRSU has been accepted to "**IEEE Transactions on Intelligent Transportation Systems (T-ITS)**"!
 ## **Installation**
 
 ```shell

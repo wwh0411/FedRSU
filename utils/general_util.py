@@ -20,7 +20,7 @@ def init_log(configs, args):
 
     save_dir = os.path.join(log_path, args.alg + '_'
                             + str(configs['fed_params']['sample_fraction'])
-                            + configs['evaluation_mode'] + '_p' + str(args.p)
+                            + configs['evaluation_mode'] + '_p' + str(args.p) + '_q' + str(args.q)
                             + '_' + time.strftime('%d%B%Yat%H_%M_%S%Z'))
 
     writer = SummaryWriter(save_dir)

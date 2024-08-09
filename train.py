@@ -13,13 +13,14 @@ from utils import init_log, fix_seed, evaluate, evaluate_local
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', default='./config/lumpi_flowstep3d_gen_seen.yaml', type=str, help='Config files')
+    parser.add_argument('--config', default='./config/example.yaml', type=str, help='Config files')
     parser.add_argument('--gpu', type=str, default='7', help='assign gpu index')
     parser.add_argument('--alg', type=str, default='central', help="training algorithms")
     parser.add_argument('--debug', action='store_true', default=False, help="test if code works, it will set iter_steps to 1")
     parser.add_argument('--ddp', action='store_true', default=False)
     parser.add_argument("--local_rank", type=int, default=0, help="for distributed learning")
-    parser.add_argument("--p", type=int, default=7, help="num of clients that use optical loss")
+    parser.add_argument("--p", type=int, default=0, help="num of clients that use optical loss")
+    parser.add_argument("--q", type=int, default=0, help="num of clients that use vehicle")
 
     args = parser.parse_args()
 
@@ -49,6 +50,8 @@ def main():
 
     # === Federated dataset setup ===
     train_dls, val_dls, dataset_size_list = get_dataloaders(configs, args)
+    train_dls = train_dls[:7+args.q]
+    dataset_size_list = dataset_size_list[:7+args.q]
     num_train_client, num_val_client = len(train_dls), len(val_dls)
     print('num_train_client: %d, num_val_client: %d' % (num_train_client, num_val_client))
     print([len(x) for x in train_dls])
