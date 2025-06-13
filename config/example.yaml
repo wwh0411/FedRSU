@@ -53,8 +53,8 @@ data:
   overfit_samples: null
   train_dataset: [dair_v2x, lumpi]
   val_dataset: [dair_v2x, campus]
-  train_dataset_path: [./data/Dair-V2X, ./data/LUMPI]
-  val_dataset_path: [./data/Dair-V2X, ./data/Campus]
+  train_dataset_path: [./example_data/Dair-V2X, ./example_data/LUMPI]
+  val_dataset_path: [./example_data/Dair-V2X, ./example_data/Campus]
   test_dataset: null
   test_data_root: null
   num_points: 4096
